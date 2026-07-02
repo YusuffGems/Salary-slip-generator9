@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Employee {
+  id               String   @id @default(cuid())
+  employeeCode     String   @unique // Employee ID shown in UI
+  name             String
+  email            String
+  phone            String?
+  department       String?
+  designation      String?
+  dateOfJoining    DateTime?
+  bankName         String?
+  accountNumber    String?
+  ifscCode         String?
+  panNumber        String?
+  uanNumber        String?
+
+  basicSalary      Decimal  @default(0) @db.Decimal(12, 2)
+  hra              Decimal  @default(0) @db.Decimal(12, 2)
+  medicalAllowance Decimal  @default(0) @db.Decimal(12, 2)
+  travelAllowance  Decimal  @default(0) @db.Decimal(12, 2)
+  specialAllowance Decimal  @default(0) @db.Decimal(12, 2)
+  bonus            Decimal  @default(0) @db.Decimal(12, 2)
+
+  pf               Decimal  @default(0) @db.Decimal(12, 2)
+  esi              Decimal  @default(0) @db.Decimal(12, 2)
+  professionalTax  Decimal  @default(0) @db.Decimal(12, 2)
+  otherDeduction   Decimal  @default(0) @db.Decimal(12, 2)
+
+  isActive         Boolean  @default(true)
+
+  salarySlips      SalarySlip[]
+  emailLogs        EmailLog[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([name])
+  @@index([department])
+  @@map("employees")
+}
+
+model Payroll {
+  id               String   @id @default(cuid())
+  month            Int      // 1-12
+  year             Int
+  employeeCount    Int      @default(0)
+  totalGross       Decimal  @default(0) @db.Decimal(14, 2)
+  totalDeduction   Decimal  @default(0) @db.Decimal(14, 2)
+  totalNet         Decimal  @default(0) @db.Decimal(14, 2)
+  status           PayrollStatus @default(GENERATED)
+
+  salarySlips      SalarySlip[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([month, year])
+  @@map("payroll")
+}
+
+enum PayrollStatus {
+  GENERATED
+  PARTIALLY_SENT
+  SENT
+}
+
+model SalarySlip {
+  id               String   @id @default(cuid())
+  payrollId        String
+  payroll          Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  employeeId       String
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  basicSalary      Decimal  @db.Decimal(12, 2)
+  hra              Decimal  @db.Decimal(12, 2)
+  medicalAllowance Decimal  @db.Decimal(12, 2)
+  travelAllowance  Decimal  @db.Decimal(12, 2)
+  specialAllowance Decimal  @db.Decimal(12, 2)
+  bonus            Decimal  @db.Decimal(12, 2)
+  grossSalary      Decimal  @db.Decimal(12, 2)
+
+  pf               Decimal  @db.Decimal(12, 2)
+  esi              Decimal  @db.Decimal(12, 2)
+  professionalTax  Decimal  @db.Decimal(12, 2)
+  otherDeduction   Decimal  @db.Decimal(12, 2)
+  totalDeduction   Decimal  @db.Decimal(12, 2)
+
+  netSalary        Decimal  @db.Decimal(12, 2)
+  pdfUrl           String?
+
+  emailLogs        EmailLog[]
+
+  createdAt        DateTime @default(now())
+
+  @@unique([payrollId, employeeId])
+  @@index([employeeId])
+  @@map("salary_slips")
+}
+
+model EmailLog {
+  id             String    @id @default(cuid())
+  salarySlipId   String
+  salarySlip     SalarySlip @relation(fields: [salarySlipId], references: [id], onDelete: Cascade)
+  employeeId     String
+  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  email          String
+  payrollMonth   String
+  status         EmailStatus @default(PENDING)
+  errorMessage   String?
+  sentAt         DateTime?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("email_logs")
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model CompanySettings {
+  id             String   @id @default("singleton")
+  companyName    String   @default("")
+  logoUrl        String?
+  address        String?
+  phone          String?
+  email          String?
+  gst            String?
+  pan            String?
+  website        String?
+
+  smtpHost       String?
+  smtpPort       Int?
+  smtpEmail      String?
+  smtpPassword   String?
+  smtpSecurity   String?  // "SSL" | "TLS" | "NONE"
+
+  updatedAt      DateTime @updatedAt
+
+  @@map("company_settings")
+}
