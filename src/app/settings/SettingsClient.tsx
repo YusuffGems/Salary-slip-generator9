@@ -107,6 +107,19 @@ export default function SettingsClient({ initialSettings }: { initialSettings: C
       </section>
 
       <section className="glass-card rounded-2xl p-6 shadow-card">
+        <h2 className="mb-4 text-sm font-semibold text-brand-500">Payslip Signatories</h2>
+        <p className="mb-4 text-xs text-[var(--text-secondary)]">
+          These names appear at the bottom of every generated payslip, under "Prepared by" and "Verified By".
+        </p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {Field("preparedByName", "Prepared By - Name")}
+          {Field("preparedByTitle", "Prepared By - Title")}
+          {Field("verifiedByName", "Verified By - Name")}
+          {Field("verifiedByTitle", "Verified By - Title")}
+        </div>
+      </section>
+
+      <section className="glass-card rounded-2xl p-6 shadow-card">
         <h2 className="mb-4 text-sm font-semibold text-brand-500">SMTP / Email Automation</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {Field("smtpHost", "SMTP Host")}

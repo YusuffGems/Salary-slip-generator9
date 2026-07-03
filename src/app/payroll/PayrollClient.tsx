@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Eye, Send, Download, X, CheckCircle2, XCircle, Loader2, Sparkles } from "lucide-react";
+import { Play, Eye, Send, Download, X, CheckCircle2, XCircle, Loader2, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { downloadFile } from "@/lib/download";
 import { formatCurrency, MONTH_NAMES } from "@/lib/salary";
@@ -22,6 +22,7 @@ interface PayrollRow {
 
 interface SlipPreview {
   id: string;
+  employeeId: string;
   employeeName: string;
   employeeCode: string;
   email: string;
@@ -91,6 +92,32 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
     const json = await res.json();
     setPreviewSlips(json.slips || []);
     setPreviewOpen(true);
+  }
+
+  async function handleDeleteSlip(slipId: string, employeeName: string) {
+    if (!confirm(`Delete the salary slip for ${employeeName}? This cannot be undone.`)) return;
+
+    const res = await fetch(`/api/payroll/slip/${slipId}`, { method: "DELETE" });
+    const json = await res.json();
+
+    if (!res.ok) {
+      toast.error(json.error || "Failed to delete salary slip");
+      return;
+    }
+
+    toast.success("Salary slip deleted");
+    setPreviewSlips((prev) => prev.filter((s) => s.id !== slipId));
+
+    if (json.payrollDeleted) {
+      setPayrolls((prev) => prev.filter((p) => p.id !== activePayroll?.id));
+      setPreviewOpen(false);
+    } else if (activePayroll) {
+      const res2 = await fetch("/api/payroll");
+      const json2 = await res2.json();
+      if (res2.ok) {
+        setPayrolls(json2.payrolls || []);
+      }
+    }
   }
 
   async function handleSend(p: PayrollRow) {
@@ -246,8 +273,9 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
               <div className="space-y-2">
                 {previewSlips.map((s) => (
                   <div key={s.id} className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium">{s.employeeName}</p>
+                    <div><Link href={`/employees/${s.employeeId}`} className="text-sm font-medium hover:text-brand-400 hover:underline">
+                        {s.employeeName}
+                      </Link>
                       <p className="text-xs text-[var(--text-secondary)]">{s.employeeCode} · {s.email}</p>
                     </div>
                     <div className="flex items-center gap-4">
@@ -262,6 +290,13 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
                         className="rounded-lg p-2 hover:bg-white/10"
                       >
                         <Download size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSlip(s.id, s.employeeName)}
+                        className="rounded-lg p-2 text-rose-500 hover:bg-rose-500/10"
+                        title="Delete this salary slip"
+                      >
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>

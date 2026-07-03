@@ -39,7 +39,7 @@ export default function Sidebar() {
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-card">
           <Receipt size={18} />
         </div>
-        <span className="text-base font-semibold tracking-tight">PaySlip Pro</span>
+        <span className="text-base font-semibold tracking-tight">Leather SSC PaySlip </span>
       </div>
 
       <nav className="flex-1 space-y-1 px-3">

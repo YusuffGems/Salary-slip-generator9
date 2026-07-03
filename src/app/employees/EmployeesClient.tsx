@@ -100,7 +100,7 @@ export default function EmployeesClient({
               return (
                 <tr key={e.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
-                    <div className="font-medium">{e.name}</div>
+                    <Link href={`/employees/${e.id}`} className="font-medium hover:text-brand-400 hover:underline">{e.name}</Link>
                     <div className="text-xs text-[var(--text-secondary)]">
                       <span className="font-mono text-brand-400">{e.employeeCode}</span> · {e.email}
                     </div>

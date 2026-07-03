@@ -131,6 +131,11 @@ create table if not exists company_settings (
   pan             text,
   website         text,
 
+  prepared_by_name  text,
+  prepared_by_title text,
+  verified_by_name  text,
+  verified_by_title text,
+
   smtp_host       text,
   smtp_port       int,
   smtp_email      text,

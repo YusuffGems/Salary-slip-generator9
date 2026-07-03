@@ -52,6 +52,10 @@ export interface CompanySettingsInput {
   gst?: string;
   pan?: string;
   website?: string;
+  preparedByName?: string;
+  preparedByTitle?: string;
+  verifiedByName?: string;
+  verifiedByTitle?: string;
   smtpHost?: string;
   smtpPort?: number;
   smtpEmail?: string;

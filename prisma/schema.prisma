@@ -144,6 +144,11 @@ model CompanySettings {
   pan            String?
   website        String?
 
+  preparedByName  String?
+  preparedByTitle String?
+  verifiedByName  String?
+  verifiedByTitle String?
+
   smtpHost       String?
   smtpPort       Int?
   smtpEmail      String?

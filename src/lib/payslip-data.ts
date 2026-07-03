@@ -13,8 +13,12 @@ export async function buildPayslipData(slipId: string): Promise<PayslipData | nu
   return {
     employeeName: slip.employee.name,
     employeeCode: slip.employee.employeeCode,
+    employeeEmail: slip.employee.email,
     department: slip.employee.department ?? undefined,
     designation: slip.employee.designation ?? undefined,
+    dateOfJoining: slip.employee.dateOfJoining
+      ? slip.employee.dateOfJoining.toLocaleDateString("en-GB").replace(/\//g, "-")
+      : undefined,
     month: slip.payroll.month,
     year: slip.payroll.year,
     bankName: slip.employee.bankName ?? undefined,
@@ -45,6 +49,10 @@ export async function buildPayslipData(slipId: string): Promise<PayslipData | nu
       gst: settings?.gst ?? undefined,
       pan: settings?.pan ?? undefined,
       website: settings?.website ?? undefined,
+      preparedByName: settings?.preparedByName ?? undefined,
+      preparedByTitle: settings?.preparedByTitle ?? undefined,
+      verifiedByName: settings?.verifiedByName ?? undefined,
+      verifiedByTitle: settings?.verifiedByTitle ?? undefined,
     },
   };
 }
