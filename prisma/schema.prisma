@@ -97,6 +97,16 @@ model SalarySlip {
   netSalary        Decimal  @db.Decimal(12, 2)
   pdfUrl           String?
 
+  // Attendance & leave — workingDays is auto-calculated, the rest are
+  // manually entered per slip when generating a single employee's payslip.
+  // All optional: bulk-generated payroll slips leave these blank ("-" on PDF).
+  workingDays      Int?
+  daysWorked       Decimal? @db.Decimal(5, 2)
+  daysLeave        Decimal? @db.Decimal(5, 2)
+  lossOfPayDays    Decimal? @db.Decimal(5, 2)
+  clBalance        Decimal? @db.Decimal(5, 2)
+  elBalance        Decimal? @db.Decimal(5, 2)
+
   emailLogs        EmailLog[]
 
   createdAt        DateTime @default(now())
@@ -146,8 +156,10 @@ model CompanySettings {
 
   preparedByName  String?
   preparedByTitle String?
+  preparedBySignatureUrl String?
   verifiedByName  String?
   verifiedByTitle String?
+  verifiedBySignatureUrl String?
 
   smtpHost       String?
   smtpPort       Int?

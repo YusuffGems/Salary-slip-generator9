@@ -13,6 +13,12 @@ export interface PayslipData {
   year: number;
   bankName?: string;
   accountNumber?: string;
+  workingDays?: number;
+  daysWorked?: number;
+  daysLeave?: number;
+  lossOfPayDays?: number;
+  clBalance?: number;
+  elBalance?: number;
   ifscCode?: string;
   panNumber?: string;
   breakdown: SalaryBreakdown;
@@ -27,13 +33,26 @@ export interface PayslipData {
     website?: string;
     preparedByName?: string;
     preparedByTitle?: string;
+    preparedBySignatureUrl?: string;
     verifiedByName?: string;
     verifiedByTitle?: string;
+    verifiedBySignatureUrl?: string;
   };
 }
 
 const BORDER = "#000000";
 const TEXT = "#000000";
+
+async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const arrayBuffer = await res.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch {
+    return null;
+  }
+}
 
 export async function generatePayslipPdf(data: PayslipData): Promise<Buffer> {
   const { breakdown: b, company } = data;
@@ -48,13 +67,9 @@ export async function generatePayslipPdf(data: PayslipData): Promise<Buffer> {
   let y = doc.page.margins.top;
 
   if (company.logoUrl) {
-    try {
-      const res = await fetch(company.logoUrl);
-      const arrayBuffer = await res.arrayBuffer();
-      const logoBuffer = Buffer.from(arrayBuffer);
-      doc.image(logoBuffer, left, y, { width: 55, height: 55 });
-    } catch {
-      // Logo fetch failed - continue without it
+    const logoBuffer = await fetchImageBuffer(company.logoUrl);
+    if (logoBuffer) {
+      doc.image(logoBuffer, left, y, { fit: [110, 50] });
     }
   }
 
@@ -81,13 +96,15 @@ export async function generatePayslipPdf(data: PayslipData): Promise<Buffer> {
   const col3W = pageWidth * 0.22;
   const col4W = pageWidth - col1W - col2W - col3W;
 
+  const fmtNum = (v: number | undefined) => (v === undefined || v === null ? "-" : String(v));
+
   const infoRows: [string, string, string, string][] = [
-    ["Employee Name", data.employeeName, "No. of Working Days", "-"],
-    ["Employee Code", data.employeeCode, "No. of Days Worked", "-"],
-    ["Designation", data.designation || "-", "No. of Days Leave", "-"],
-    ["Department", data.department || "-", "Loss of Pay Days", "-"],
-    ["PAN No.", data.panNumber || "-", "CL Balance", "-"],
-    ["Joining Date", data.dateOfJoining || "-", "EL Balance", "-"],
+    ["Employee Name", data.employeeName, "No. of Working Days", fmtNum(data.workingDays)],
+    ["Employee Code", data.employeeCode, "No. of Days Worked", fmtNum(data.daysWorked)],
+    ["Designation", data.designation || "-", "No. of Days Leave", fmtNum(data.daysLeave)],
+    ["Department", data.department || "-", "Loss of Pay Days", fmtNum(data.lossOfPayDays)],
+    ["PAN No.", data.panNumber || "-", "CL Balance", fmtNum(data.clBalance)],
+    ["Joining Date", data.dateOfJoining || "-", "EL Balance", fmtNum(data.elBalance)],
     ["Email", data.employeeEmail || "-", "Actual Gross Salary", formatCurrency(b.grossSalary)],
   ];
 
@@ -218,23 +235,38 @@ export async function generatePayslipPdf(data: PayslipData): Promise<Buffer> {
   doc.fontSize(9).font("Helvetica").fillColor(TEXT).text("Prepared by:", left, y + 12, { width: sigColWidth, align: "center" });
   doc.fontSize(9).font("Helvetica").text("Verified By:", left + sigColWidth, y + 12, { width: sigColWidth, align: "center" });
 
-  doc
-    .fontSize(9)
-    .font("Helvetica-Bold")
-    .text(company.preparedByName || "", left, y + 62, { width: sigColWidth, align: "center" });
-  doc
-    .fontSize(8)
-    .font("Helvetica")
-    .text(company.preparedByTitle || "", left, y + 76, { width: sigColWidth, align: "center" });
+  const preparedSigBuffer = company.preparedBySignatureUrl
+    ? await fetchImageBuffer(company.preparedBySignatureUrl)
+    : null;
+  const verifiedSigBuffer = company.verifiedBySignatureUrl
+    ? await fetchImageBuffer(company.verifiedBySignatureUrl)
+    : null;
 
-  doc
-    .fontSize(9)
-    .font("Helvetica-Bold")
-    .text(company.verifiedByName || "", left + sigColWidth, y + 62, { width: sigColWidth, align: "center" });
-  doc
-    .fontSize(8)
-    .font("Helvetica")
-    .text(company.verifiedByTitle || "", left + sigColWidth, y + 76, { width: sigColWidth, align: "center" });
+  if (preparedSigBuffer) {
+    doc.image(preparedSigBuffer, left + 10, y + 22, { fit: [sigColWidth - 20, sigBoxHeight - 30], align: "center", valign: "center" });
+  } else {
+    doc
+      .fontSize(9)
+      .font("Helvetica-Bold")
+      .text(company.preparedByName || "", left, y + 55, { width: sigColWidth, align: "center" });
+    doc
+      .fontSize(8)
+      .font("Helvetica")
+      .text(company.preparedByTitle || "", left, y + 69, { width: sigColWidth, align: "center" });
+  }
+
+  if (verifiedSigBuffer) {
+    doc.image(verifiedSigBuffer, left + sigColWidth + 10, y + 22, { fit: [sigColWidth - 20, sigBoxHeight - 30], align: "center", valign: "center" });
+  } else {
+    doc
+      .fontSize(9)
+      .font("Helvetica-Bold")
+      .text(company.verifiedByName || "", left + sigColWidth, y + 55, { width: sigColWidth, align: "center" });
+    doc
+      .fontSize(8)
+      .font("Helvetica")
+      .text(company.verifiedByTitle || "", left + sigColWidth, y + 69, { width: sigColWidth, align: "center" });
+  }
 
   doc.end();
 

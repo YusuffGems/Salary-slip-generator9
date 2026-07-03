@@ -8,4 +8,4 @@ const supabaseAnonKey =
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const PDF_BUCKET = "salary-slips";
-export const LOGO_BUCKET = "company-assets";
+export const LOGO_BUCKET = "Leatherssc-assets";

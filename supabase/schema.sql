@@ -93,6 +93,13 @@ create table if not exists salary_slips (
   net_salary        numeric(12,2) not null,
   pdf_url           text,
 
+  working_days      int,
+  days_worked       numeric(5,2),
+  days_leave        numeric(5,2),
+  loss_of_pay_days  numeric(5,2),
+  cl_balance        numeric(5,2),
+  el_balance        numeric(5,2),
+
   created_at        timestamptz not null default now(),
 
   unique (payroll_id, employee_id)
@@ -133,8 +140,10 @@ create table if not exists company_settings (
 
   prepared_by_name  text,
   prepared_by_title text,
+  prepared_by_signature_url text,
   verified_by_name  text,
   verified_by_title text,
+  verified_by_signature_url text,
 
   smtp_host       text,
   smtp_port       int,

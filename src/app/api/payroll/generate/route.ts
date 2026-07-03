@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { calculateSalary } from "@/lib/salary";
+import { calculateSalary, getWorkingDaysInMonth } from "@/lib/salary";
 import { z } from "zod";
+
+const attendanceSchema = z.object({
+  daysWorked: z.number().nonnegative().optional(),
+  daysLeave: z.number().nonnegative().optional(),
+  lossOfPayDays: z.number().nonnegative().optional(),
+  clBalance: z.number().optional(),
+  elBalance: z.number().optional(),
+});
 
 const schema = z.object({
   month: z.number().int().min(1).max(12),
   year: z.number().int().min(2000).max(2100),
-  // Optional: generate for specific employees only (used by the Generate Salary
-  // page for single-employee slips). If omitted, generates for all active employees.
   employeeIds: z.array(z.string()).optional(),
+  attendance: attendanceSchema.optional(),
 });
 
 export async function POST(req: NextRequest) {
   try {
-    const { month, year, employeeIds } = schema.parse(await req.json());
+    const { month, year, employeeIds, attendance } = schema.parse(await req.json());
 
     let payroll = await prisma.payroll.findUnique({ where: { month_year: { month, year } } });
 
@@ -51,6 +58,7 @@ export async function POST(req: NextRequest) {
     }
 
     const createdSlipIds: string[] = [];
+    const workingDays = getWorkingDaysInMonth(month, year);
 
     await prisma.$transaction(async (tx) => {
       if (!payroll) {
@@ -90,6 +98,12 @@ export async function POST(req: NextRequest) {
             otherDeduction: b.otherDeduction,
             totalDeduction: b.totalDeduction,
             netSalary: b.netSalary,
+            workingDays,
+            daysWorked: attendance?.daysWorked,
+            daysLeave: attendance?.daysLeave,
+            lossOfPayDays: attendance?.lossOfPayDays,
+            clBalance: attendance?.clBalance,
+            elBalance: attendance?.elBalance,
           },
         });
         createdSlipIds.push(slip.id);

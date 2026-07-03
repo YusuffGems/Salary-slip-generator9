@@ -69,3 +69,22 @@ export const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+
+/**
+ * Auto-calculates the standard "No. of Working Days" for a payroll month:
+ * total calendar days in the month, minus Sundays (the common convention
+ * for Indian payroll where Saturdays are working but Sundays are not).
+ * Adjust here if a different working-week convention is needed.
+ */
+export function getWorkingDaysInMonth(month: number, year: number): number {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let workingDays = 0;
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month - 1, day);
+    if (date.getDay() !== 0) {
+      // 0 = Sunday
+      workingDays++;
+    }
+  }
+  return workingDays;
+}
