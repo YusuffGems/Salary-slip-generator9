@@ -25,12 +25,6 @@ export async function buildPayslipData(slipId: string): Promise<PayslipData | nu
     accountNumber: slip.employee.accountNumber ?? undefined,
     ifscCode: slip.employee.ifscCode ?? undefined,
     panNumber: slip.employee.panNumber ?? undefined,
-    workingDays: slip.workingDays ?? undefined,
-    daysWorked: slip.daysWorked !== null ? Number(slip.daysWorked) : undefined,
-    daysLeave: slip.daysLeave !== null ? Number(slip.daysLeave) : undefined,
-    lossOfPayDays: slip.lossOfPayDays !== null ? Number(slip.lossOfPayDays) : undefined,
-    clBalance: slip.clBalance !== null ? Number(slip.clBalance) : undefined,
-    elBalance: slip.elBalance !== null ? Number(slip.elBalance) : undefined,
     breakdown: {
       basicSalary: Number(slip.basicSalary),
       hra: Number(slip.hra),

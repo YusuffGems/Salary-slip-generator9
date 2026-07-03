@@ -20,6 +20,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     grossSalary: Number(s.grossSalary),
     totalDeduction: Number(s.totalDeduction),
     netSalary: Number(s.netSalary),
+    workingDays: s.workingDays,
+    daysWorked: s.daysWorked !== null ? Number(s.daysWorked) : null,
+    daysLeave: s.daysLeave !== null ? Number(s.daysLeave) : null,
+    lossOfPayDays: s.lossOfPayDays !== null ? Number(s.lossOfPayDays) : null,
+    clBalance: s.clBalance !== null ? Number(s.clBalance) : null,
+    elBalance: s.elBalance !== null ? Number(s.elBalance) : null,
   }));
 
   return NextResponse.json({ slips: serialized });

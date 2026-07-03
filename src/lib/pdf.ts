@@ -13,12 +13,6 @@ export interface PayslipData {
   year: number;
   bankName?: string;
   accountNumber?: string;
-  workingDays?: number;
-  daysWorked?: number;
-  daysLeave?: number;
-  lossOfPayDays?: number;
-  clBalance?: number;
-  elBalance?: number;
   ifscCode?: string;
   panNumber?: string;
   breakdown: SalaryBreakdown;
@@ -91,21 +85,17 @@ export async function generatePayslipPdf(data: PayslipData): Promise<Buffer> {
   y += 65;
 
   const rowHeight = 20;
-  const col1W = pageWidth * 0.22;
-  const col2W = pageWidth * 0.28;
-  const col3W = pageWidth * 0.22;
-  const col4W = pageWidth - col1W - col2W - col3W;
+  const col1W = pageWidth * 0.28;
+  const col2W = pageWidth - col1W;
 
-  const fmtNum = (v: number | undefined) => (v === undefined || v === null ? "-" : String(v));
-
-  const infoRows: [string, string, string, string][] = [
-    ["Employee Name", data.employeeName, "No. of Working Days", fmtNum(data.workingDays)],
-    ["Employee Code", data.employeeCode, "No. of Days Worked", fmtNum(data.daysWorked)],
-    ["Designation", data.designation || "-", "No. of Days Leave", fmtNum(data.daysLeave)],
-    ["Department", data.department || "-", "Loss of Pay Days", fmtNum(data.lossOfPayDays)],
-    ["PAN No.", data.panNumber || "-", "CL Balance", fmtNum(data.clBalance)],
-    ["Joining Date", data.dateOfJoining || "-", "EL Balance", fmtNum(data.elBalance)],
-    ["Email", data.employeeEmail || "-", "Actual Gross Salary", formatCurrency(b.grossSalary)],
+  const infoRows: [string, string][] = [
+    ["Employee Name", data.employeeName],
+    ["Employee Code", data.employeeCode],
+    ["Designation", data.designation || "-"],
+    ["Department", data.department || "-"],
+    ["PAN No.", data.panNumber || "-"],
+    ["Joining Date", data.dateOfJoining || "-"],
+    ["Email", data.employeeEmail || "-"],
   ];
 
   function drawGridRow(cells: string[], widths: number[], rowY: number) {
@@ -126,7 +116,7 @@ export async function generatePayslipPdf(data: PayslipData): Promise<Buffer> {
   }
 
   infoRows.forEach((row) => {
-    drawGridRow([row[0], row[1], row[2], row[3]], [col1W, col2W, col3W, col4W], y);
+    drawGridRow([row[0], row[1]], [col1W, col2W], y);
     y += rowHeight;
   });
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Eye, Send, Download, X, CheckCircle2, XCircle, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Play, Eye, Send, Download, X, CheckCircle2, XCircle, Loader2, Sparkles, Trash2, CalendarClock } from "lucide-react";
 import Link from "next/link";
 import { downloadFile } from "@/lib/download";
 import { formatCurrency, MONTH_NAMES } from "@/lib/salary";
@@ -30,6 +30,12 @@ interface SlipPreview {
   grossSalary: number;
   totalDeduction: number;
   netSalary: number;
+  workingDays?: number | null;
+  daysWorked?: number | null;
+  daysLeave?: number | null;
+  lossOfPayDays?: number | null;
+  clBalance?: number | null;
+  elBalance?: number | null;
 }
 
 type ProgressEvent =
@@ -52,6 +58,14 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
   const [sending, setSending] = useState(false);
   const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
   const [progressOpen, setProgressOpen] = useState(false);
+
+  const [attendanceSlip, setAttendanceSlip] = useState<SlipPreview | null>(null);
+  const [attDaysWorked, setAttDaysWorked] = useState("");
+  const [attDaysLeave, setAttDaysLeave] = useState("");
+  const [attLossOfPay, setAttLossOfPay] = useState("");
+  const [attClBalance, setAttClBalance] = useState("");
+  const [attElBalance, setAttElBalance] = useState("");
+  const [savingAttendance, setSavingAttendance] = useState(false);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -117,6 +131,46 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
       if (res2.ok) {
         setPayrolls(json2.payrolls || []);
       }
+    }
+  }
+
+  function openAttendanceEdit(slip: SlipPreview) {
+    setAttendanceSlip(slip);
+    setAttDaysWorked(slip.daysWorked !== null && slip.daysWorked !== undefined ? String(slip.daysWorked) : "");
+    setAttDaysLeave(slip.daysLeave !== null && slip.daysLeave !== undefined ? String(slip.daysLeave) : "");
+    setAttLossOfPay(slip.lossOfPayDays !== null && slip.lossOfPayDays !== undefined ? String(slip.lossOfPayDays) : "");
+    setAttClBalance(slip.clBalance !== null && slip.clBalance !== undefined ? String(slip.clBalance) : "");
+    setAttElBalance(slip.elBalance !== null && slip.elBalance !== undefined ? String(slip.elBalance) : "");
+  }
+
+  async function handleSaveAttendance() {
+    if (!attendanceSlip) return;
+    setSavingAttendance(true);
+    try {
+      const toNum = (v: string) => (v.trim() === "" ? null : Number(v));
+      const res = await fetch(`/api/payroll/slip/${attendanceSlip.id}/attendance`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          daysWorked: toNum(attDaysWorked),
+          daysLeave: toNum(attDaysLeave),
+          lossOfPayDays: toNum(attLossOfPay),
+          clBalance: toNum(attClBalance),
+          elBalance: toNum(attElBalance),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Failed to update attendance");
+        return;
+      }
+      setPreviewSlips((prev) =>
+        prev.map((s) => (s.id === attendanceSlip.id ? { ...s, ...json.slip } : s))
+      );
+      toast.success("Attendance details updated");
+      setAttendanceSlip(null);
+    } finally {
+      setSavingAttendance(false);
     }
   }
 
@@ -273,13 +327,21 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
               <div className="space-y-2">
                 {previewSlips.map((s) => (
                   <div key={s.id} className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
-                    <div><Link href={`/employees/${s.employeeId}`} className="text-sm font-medium hover:text-brand-400 hover:underline">
+                    <div>
+                      <Link href={`/employees/${s.employeeId}`} className="text-sm font-medium hover:text-brand-400 hover:underline">
                         {s.employeeName}
                       </Link>
                       <p className="text-xs text-[var(--text-secondary)]">{s.employeeCode} · {s.email}</p>
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-sm font-medium text-emerald-500">{formatCurrency(s.netSalary)}</span>
+                      <button
+                        onClick={() => openAttendanceEdit(s)}
+                        className="rounded-lg p-2 hover:bg-white/10"
+                        title="Edit Attendance & Leave"
+                      >
+                        <CalendarClock size={14} />
+                      </button>
                       <button
                         onClick={() =>
                           downloadFile(
@@ -301,6 +363,57 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
                     </div>
                   </div>
                 ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Attendance Edit Modal */}
+      <AnimatePresence>
+        {attendanceSlip && (
+          <motion.div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="glass-card w-full max-w-md rounded-2xl p-6 shadow-glass">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-base font-semibold">Attendance & Leave — {attendanceSlip.employeeName}</h2>
+                <button onClick={() => setAttendanceSlip(null)}><X size={18} /></button>
+              </div>
+              <p className="mb-4 text-xs text-[var(--text-secondary)]">
+                No. of Working Days is calculated automatically{attendanceSlip.workingDays ? ` (${attendanceSlip.workingDays} days)` : ""}. Leave any field blank to show "-" on the payslip.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Days Worked</label>
+                  <input type="number" step="0.5" value={attDaysWorked} onChange={(e) => setAttDaysWorked(e.target.value)} placeholder="-" className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-brand-500" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Days Leave</label>
+                  <input type="number" step="0.5" value={attDaysLeave} onChange={(e) => setAttDaysLeave(e.target.value)} placeholder="-" className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-brand-500" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Loss of Pay Days</label>
+                  <input type="number" step="0.5" value={attLossOfPay} onChange={(e) => setAttLossOfPay(e.target.value)} placeholder="-" className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-brand-500" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">CL Balance</label>
+                  <input type="number" step="0.5" value={attClBalance} onChange={(e) => setAttClBalance(e.target.value)} placeholder="-" className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-brand-500" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">EL Balance</label>
+                  <input type="number" step="0.5" value={attElBalance} onChange={(e) => setAttElBalance(e.target.value)} placeholder="-" className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-brand-500" />
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end gap-3">
+                <button onClick={() => setAttendanceSlip(null)} className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium hover:bg-white/5">
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveAttendance}
+                  disabled={savingAttendance}
+                  className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                >
+                  {savingAttendance ? "Saving..." : "Save"}
+                </button>
               </div>
             </motion.div>
           </motion.div>
