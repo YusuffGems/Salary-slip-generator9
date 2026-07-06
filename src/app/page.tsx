@@ -27,7 +27,7 @@ export default async function DashboardPage() {
     : `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()} (not generated)`;
 
   return (
-    <div className="animate-fadeUp space-y-8">
+  <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-sm text-[var(--text-secondary)]">

@@ -264,7 +264,7 @@ export default function GenerateSalaryClient({
 
       {/* Selected employee panel */}
       {selected && breakdown && (
-        <div className="animate-fadeUp space-y-4">
+        <div className="space-y-4">
           {/* Employee Information */}
           <div className="glass-card rounded-2xl p-6 shadow-card">
             <h2 className="mb-4 text-sm font-semibold text-brand-500">Employee Information</h2>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Download, Mail, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Pencil, Download, Mail, MessageCircle, FileText, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/salary";
 import { downloadFile } from "@/lib/download";
 
@@ -43,6 +43,7 @@ export default function EmployeeDetailClient({
 }) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [emailingId, setEmailingId] = useState<string | null>(null);
+  const [whatsappId, setWhatsappId] = useState<string | null>(null);
 
   async function handleDownload(slip: SlipRow) {
     setDownloadingId(slip.id);
@@ -73,8 +74,23 @@ export default function EmployeeDetailClient({
     }
   }
 
+  async function handleWhatsApp(slip: SlipRow) {
+    setWhatsappId(slip.id);
+    try {
+      const res = await fetch(`/api/payroll/slip/${slip.id}/send-whatsapp`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Failed to send WhatsApp message");
+        return;
+      }
+      toast.success(`Payslip sent to ${employee.name} via WhatsApp`);
+    } finally {
+      setWhatsappId(null);
+    }
+  }
+
   return (
-    <div className="animate-fadeUp space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Link href="/employees" className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
           <ArrowLeft size={16} /> Back to Employees
@@ -87,6 +103,7 @@ export default function EmployeeDetailClient({
         </Link>
       </div>
 
+      {/* Profile card */}
       <div className="glass-card rounded-2xl p-6 shadow-card">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-4">
@@ -116,12 +133,13 @@ export default function EmployeeDetailClient({
         </div>
       </div>
 
+      {/* Payslip history */}
       <div className="glass-card overflow-x-auto rounded-2xl shadow-card">
         <div className="flex items-center justify-between px-5 pt-5">
           <h2 className="text-base font-semibold">Payslip History</h2>
           <span className="text-xs text-[var(--text-secondary)]">{slips.length} slip{slips.length === 1 ? "" : "s"}</span>
         </div>
-        <table className="mt-3 w-full min-w-[600px] text-sm">
+        <table className="mt-3 w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-white/10 text-left text-[var(--text-secondary)]">
               <th className="px-5 py-3">Month</th>
@@ -155,6 +173,14 @@ export default function EmployeeDetailClient({
                       title="Email Payslip"
                     >
                       {emailingId === slip.id ? <Loader2 size={15} className="animate-spin" /> : <Mail size={15} />}
+                    </button>
+                    <button
+                      onClick={() => handleWhatsApp(slip)}
+                      disabled={whatsappId === slip.id}
+                      className="rounded-lg p-2 hover:bg-white/10 disabled:opacity-50"
+                      title="Send via WhatsApp"
+                    >
+                      {whatsappId === slip.id ? <Loader2 size={15} className="animate-spin" /> : <MessageCircle size={15} />}
                     </button>
                   </div>
                 </td>

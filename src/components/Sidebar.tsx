@@ -92,9 +92,28 @@ export default function Sidebar() {
         {NavContent}
       </aside>
 
+      {/* Mobile header bar - full width, avoids overlap issues that floating pills had */}
+      <header className="fixed inset-x-0 top-0 z-[70] flex h-14 items-center justify-between border-b border-white/10 bg-white px-4 shadow-md md:hidden dark:bg-[#14162b]">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white">
+            <Receipt size={16} />
+          </div>
+          <span className="text-sm font-semibold text-[#1a1a1a] dark:text-white">Leather SSC PaySlip</span>
+        </div>
+        {mounted && (
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label="Toggle theme"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-[#1a1a1a] dark:text-white"
+          >
+            {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+        )}
+      </header>
+
       {/* Floating iOS-style dock navbar (mobile only) */}
       <nav
-        className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-3xl border border-white/10 bg-white/95 px-2 py-2 shadow-2xl backdrop-blur-xl md:hidden dark:bg-[#14162b]/95"
+       className="fixed bottom-5 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-1.5 rounded-3xl border border-white/10 bg-white px-2 py-2 shadow-2xl md:hidden dark:bg-[#14162b]"
         style={{ boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}
       >
         {NAV_ITEMS.map((item) => {
