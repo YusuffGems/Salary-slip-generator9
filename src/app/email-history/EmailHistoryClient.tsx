@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Download, RotateCw, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Download, RotateCw, CheckCircle2, XCircle, Clock, Trash2 } from "lucide-react";
 import { downloadFile } from "@/lib/download";
 
 interface LogRow {
@@ -26,8 +26,10 @@ const statusStyles: Record<string, string> = {
 
 const statusIcons: Record<string, any> = { SENT: CheckCircle2, FAILED: XCircle, PENDING: Clock };
 
-export default function EmailHistoryClient({ logs }: { logs: LogRow[] }) {
+export default function EmailHistoryClient({ logs: initialLogs }: { logs: LogRow[] }) {
+  const [logs, setLogs] = useState<LogRow[]>(initialLogs);
   const [resending, setResending] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleResend(slipId: string) {
     setResending(slipId);
@@ -44,8 +46,26 @@ export default function EmailHistoryClient({ logs }: { logs: LogRow[] }) {
     }
   }
 
+  async function handleDelete(logId: string, employeeName: string) {
+    if (!confirm(`Delete this email history entry for ${employeeName}? This only removes the log — the salary slip itself is not affected.`)) return;
+
+    setDeletingId(logId);
+    try {
+      const res = await fetch(`/api/email-history/${logId}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Failed to delete entry");
+        return;
+      }
+      setLogs((prev) => prev.filter((l) => l.id !== logId));
+      toast.success("Email history entry deleted");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
-    <div className="animate-fadeUp space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Email History</h1>
         <p className="text-sm text-[var(--text-secondary)]">{logs.length} records</p>
@@ -102,6 +122,14 @@ export default function EmailHistoryClient({ logs }: { logs: LogRow[] }) {
                         title="Resend Email"
                       >
                         <RotateCw size={15} className={resending === l.salarySlipId ? "animate-spin" : ""} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(l.id, l.employeeName)}
+                        disabled={deletingId === l.id}
+                        className="rounded-lg p-2 text-rose-500 hover:bg-rose-500/10 disabled:opacity-50"
+                        title="Delete this history entry"
+                      >
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </td>
