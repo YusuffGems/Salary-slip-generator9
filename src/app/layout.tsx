@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <div className="flex h-screen overflow-hidden">
             <Sidebar />
-            <main className="h-screen flex-1 overflow-y-auto md:ml-64 p-4 pb-24 md:p-8">{children}</main>
+            <main className="app-main h-screen flex-1 overflow-y-auto md:ml-64 p-4 pt-20 pb-24 md:p-8">{children}</main>
           </div>
           <Toaster richColors position="top-right" />
         </ThemeProvider>
