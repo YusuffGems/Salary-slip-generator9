@@ -2,15 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Search, FileText, Download, Mail, CheckCircle2, Loader2 } from "lucide-react";
+import { Search, FileText, Download, Mail, MessageCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { calculateSalary, formatCurrency, MONTH_NAMES } from "@/lib/salary";
 import { downloadFile } from "@/lib/download";
+import { buildWhatsAppShareLink } from "@/lib/whatsapp";
+import { useSession } from "next-auth/react";
 
 interface EmployeeRow {
   id: string;
   employeeCode: string;
   name: string;
   email: string;
+  phone: string;
   department: string;
   designation: string;
   dateOfJoining: string | null;
@@ -33,6 +36,9 @@ export default function GenerateSalaryClient({
   employees: EmployeeRow[];
   departments: string[];
 }) {
+  const { data: session } = useSession();
+  const role = (session?.user as any)?.role;
+  const canManage = role === "ADMIN" || role === "MANAGER";
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -43,8 +49,8 @@ export default function GenerateSalaryClient({
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
 
-  // Employee IDs that already have a slip for the currently selected month/year
   const [generatedIds, setGeneratedIds] = useState<Set<string>>(new Set());
   const [slipsByEmployee, setSlipsByEmployee] = useState<Record<string, string>>({});
   const [statusLoading, setStatusLoading] = useState(true);
@@ -136,6 +142,27 @@ export default function GenerateSalaryClient({
       toast.success("Salary slip emailed successfully");
     } finally {
       setSendingEmail(false);
+    }
+  }
+
+  async function handleSendWhatsApp() {
+    if (!generatedSlipId || !selected) return;
+    if (!selected.phone) {
+      toast.error("This employee has no phone number on file — add one in Employees first.");
+      return;
+    }
+    setSendingWhatsApp(true);
+    try {
+      const monthLabel = `${MONTH_NAMES[month - 1]} ${year}`;
+      const filename = `SalarySlip_${selected.employeeCode}_${monthLabel.replace(" ", "_")}.pdf`;
+      await downloadFile(`/api/payroll/slip/${generatedSlipId}/pdf`, filename);
+      const message = `Hi ${selected.name}, please find attached your salary slip for ${monthLabel}. (The PDF was just downloaded to your device — please attach it here before sending)`;
+      window.open(buildWhatsAppShareLink(selected.phone, message), "_blank");
+      toast.success("PDF downloaded — attach it in the WhatsApp chat that just opened");
+    } catch {
+      toast.error("Failed to prepare WhatsApp message");
+    } finally {
+      setSendingWhatsApp(false);
     }
   }
 
@@ -264,7 +291,7 @@ export default function GenerateSalaryClient({
 
       {/* Selected employee panel */}
       {selected && breakdown && (
-        <div className="animate-fadeUp space-y-4">
+        <div className="space-y-4">
           {/* Employee Information */}
           <div className="glass-card rounded-2xl p-6 shadow-card">
             <h2 className="mb-4 text-sm font-semibold text-brand-500">Employee Information</h2>
@@ -326,6 +353,11 @@ export default function GenerateSalaryClient({
           </div>
 
           {/* Generate / Result actions */}
+          {!generatedSlipId && !canManage ? (
+            <div className="glass-card rounded-2xl p-6 text-center text-sm text-[var(--text-secondary)] shadow-card">
+              Your account has view-only access — generating salary slips is restricted to Admin and Manager roles.
+            </div>
+          ) : (
           <div className="glass-card flex flex-wrap items-center justify-between gap-4 rounded-2xl p-6 shadow-card">
             {!generatedSlipId ? (
               <>
@@ -348,7 +380,7 @@ export default function GenerateSalaryClient({
                 <p className="flex items-center gap-2 text-sm text-emerald-500">
                   <CheckCircle2 size={16} /> Salary slip generated successfully
                 </p>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                   <button
                     onClick={handleDownload}
                     disabled={downloading}
@@ -357,18 +389,31 @@ export default function GenerateSalaryClient({
                     {downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                     Download PDF
                   </button>
-                  <button
-                    onClick={handleSendEmail}
-                    disabled={sendingEmail}
-                    className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                  >
-                    {sendingEmail ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
-                    Email to Employee
-                  </button>
+                  {canManage && (
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={sendingEmail}
+                      className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                    >
+                      {sendingEmail ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+                      Email to Employee
+                    </button>
+                  )}
+                  {canManage && (
+                    <button
+                      onClick={handleSendWhatsApp}
+                      disabled={sendingWhatsApp}
+                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium hover:bg-white/10 disabled:opacity-50"
+                    >
+                      {sendingWhatsApp ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
+                      Send via WhatsApp
+                    </button>
+                  )}
                 </div>
               </>
             )}
           </div>
+          )}
         </div>
       )}
     </div>

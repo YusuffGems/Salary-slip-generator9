@@ -43,6 +43,9 @@
     "sonner": "1.5.0",
     "next-themes": "0.3.0",
     "class-variance-authority": "0.7.0",
-    "jszip": "3.10.1"
+      "jszip": "3.10.1",
+    "next-auth": "5.0.0-beta.25",
+    "bcryptjs": "2.4.3",
+    "@types/bcryptjs": "2.4.6"
   }
 }

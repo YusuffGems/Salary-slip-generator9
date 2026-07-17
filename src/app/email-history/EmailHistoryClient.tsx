@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Download, RotateCw, CheckCircle2, XCircle, Clock, Trash2 } from "lucide-react";
 import { downloadFile } from "@/lib/download";
+import { useSession } from "next-auth/react";
 
 interface LogRow {
   id: string;
@@ -27,6 +28,10 @@ const statusStyles: Record<string, string> = {
 const statusIcons: Record<string, any> = { SENT: CheckCircle2, FAILED: XCircle, PENDING: Clock };
 
 export default function EmailHistoryClient({ logs: initialLogs }: { logs: LogRow[] }) {
+  const { data: session } = useSession();
+  const role = (session?.user as any)?.role;
+  const isAdmin = role === "ADMIN";
+  const canManage = role === "ADMIN" || role === "MANAGER";
   const [logs, setLogs] = useState<LogRow[]>(initialLogs);
   const [resending, setResending] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -115,22 +120,26 @@ export default function EmailHistoryClient({ logs: initialLogs }: { logs: LogRow
                       >
                         <Download size={15} />
                       </button>
-                      <button
-                        onClick={() => handleResend(l.salarySlipId)}
-                        disabled={resending === l.salarySlipId}
-                        className="rounded-lg p-2 hover:bg-white/10 disabled:opacity-50"
-                        title="Resend Email"
-                      >
-                        <RotateCw size={15} className={resending === l.salarySlipId ? "animate-spin" : ""} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(l.id, l.employeeName)}
-                        disabled={deletingId === l.id}
-                        className="rounded-lg p-2 text-rose-500 hover:bg-rose-500/10 disabled:opacity-50"
-                        title="Delete this history entry"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      {canManage && (
+                        <button
+                          onClick={() => handleResend(l.salarySlipId)}
+                          disabled={resending === l.salarySlipId}
+                          className="rounded-lg p-2 hover:bg-white/10 disabled:opacity-50"
+                          title="Resend Email"
+                        >
+                          <RotateCw size={15} className={resending === l.salarySlipId ? "animate-spin" : ""} />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDelete(l.id, l.employeeName)}
+                          disabled={deletingId === l.id}
+                          className="rounded-lg p-2 text-rose-500 hover:bg-rose-500/10 disabled:opacity-50"
+                          title="Delete this history entry"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

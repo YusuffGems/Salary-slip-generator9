@@ -3,6 +3,7 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import AuthSessionProvider from "@/components/AuthSessionProvider";
 
 export const metadata: Metadata = {
   title: "Salary Slip Generator",
@@ -21,13 +22,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="h-screen overflow-hidden antialiased">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <div className="flex h-screen overflow-hidden">
-            <Sidebar />
-            <main className="app-main h-screen flex-1 overflow-y-auto md:ml-64 p-4 pt-20 pb-24 md:p-8">{children}</main>
-          </div>
-          <Toaster richColors position="top-right" />
-        </ThemeProvider>
+        <AuthSessionProvider>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+            <div className="flex h-screen overflow-hidden">
+              <Sidebar />
+              <main className="app-main h-screen flex-1 overflow-y-auto md:ml-64 p-4 pt-20 pb-24 md:p-8">{children}</main>
+            </div>
+            <Toaster richColors position="top-right" />
+          </ThemeProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );

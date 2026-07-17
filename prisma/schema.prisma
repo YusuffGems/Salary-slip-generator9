@@ -143,6 +143,25 @@ enum EmailStatus {
   FAILED
 }
 
+enum UserRole {
+  ADMIN
+  MANAGER
+  USER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(USER)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
 model CompanySettings {
   id             String   @id @default("singleton")
   companyName    String   @default("")
@@ -166,6 +185,10 @@ model CompanySettings {
   smtpEmail      String?
   smtpPassword   String?
   smtpSecurity   String?  // "SSL" | "TLS" | "NONE"
+
+  whatsappAccountSid String?
+  whatsappAuthToken  String?
+  whatsappFromNumber String? // e.g. "whatsapp:+14155238886"
 
   updatedAt      DateTime @updatedAt
 

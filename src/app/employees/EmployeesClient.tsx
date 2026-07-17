@@ -6,6 +6,7 @@ import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/salary";
 import { calculateSalary } from "@/lib/salary";
+import { useSession } from "next-auth/react";
 import type { EmployeeFormValues } from "./EmployeeForm";
 
 interface EmployeeRow extends EmployeeFormValues {
@@ -19,6 +20,8 @@ export default function EmployeesClient({
   initialEmployees: EmployeeRow[];
   departments: string[];
 }) {
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("");
@@ -53,12 +56,14 @@ export default function EmployeesClient({
           <h1 className="text-2xl font-semibold tracking-tight">Employees</h1>
           <p className="text-sm text-[var(--text-secondary)]">{employees.length} total</p>
         </div>
-        <Link
-          href="/employees/new"
-          className="flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card hover:bg-brand-700 transition-colors"
-        >
-          <Plus size={16} /> Add Employee
-        </Link>
+        {isAdmin && (
+          <Link
+            href="/employees/new"
+            className="flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card hover:bg-brand-700 transition-colors"
+          >
+            <Plus size={16} /> Add Employee
+          </Link>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -109,18 +114,20 @@ export default function EmployeesClient({
                   <td className="px-4 py-3">{formatCurrency(e.basicSalary)}</td>
                   <td className="px-4 py-3 font-medium text-emerald-500">{formatCurrency(breakdown.netSalary)}</td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <Link href={`/employees/${e.id}/edit`} className="rounded-lg p-2 hover:bg-white/10" aria-label="Edit">
-                        <Pencil size={15} />
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(e.id)}
-                        className="rounded-lg p-2 text-rose-500 hover:bg-rose-500/10"
-                        aria-label="Delete"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex justify-end gap-2">
+                        <Link href={`/employees/${e.id}/edit`} className="rounded-lg p-2 hover:bg-white/10" aria-label="Edit">
+                          <Pencil size={15} />
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(e.id)}
+                          className="rounded-lg p-2 text-rose-500 hover:bg-rose-500/10"
+                          aria-label="Delete"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

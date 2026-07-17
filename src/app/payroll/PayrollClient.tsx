@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Eye, Send, Download, X, CheckCircle2, XCircle, Loader2, Sparkles, Trash2, CalendarClock } from "lucide-react";
+import { Play, Eye, Send, Download, X, CheckCircle2, XCircle, Loader2, Sparkles, Trash2, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { downloadFile } from "@/lib/download";
+import { buildWhatsAppShareLink } from "@/lib/whatsapp";
+import { useSession } from "next-auth/react";
 import { formatCurrency, MONTH_NAMES } from "@/lib/salary";
 
 interface PayrollRow {
@@ -26,16 +28,11 @@ interface SlipPreview {
   employeeName: string;
   employeeCode: string;
   email: string;
+  phone?: string | null;
   department?: string;
   grossSalary: number;
   totalDeduction: number;
   netSalary: number;
-  workingDays?: number | null;
-  daysWorked?: number | null;
-  daysLeave?: number | null;
-  lossOfPayDays?: number | null;
-  clBalance?: number | null;
-  elBalance?: number | null;
 }
 
 type ProgressEvent =
@@ -45,6 +42,10 @@ type ProgressEvent =
   | { type: "error"; error: string };
 
 export default function PayrollClient({ initialPayrolls }: { initialPayrolls: PayrollRow[] }) {
+  const { data: session } = useSession();
+  const role = (session?.user as any)?.role;
+  const isAdmin = role === "ADMIN";
+  const canManage = role === "ADMIN" || role === "MANAGER";
   const [payrolls, setPayrolls] = useState<PayrollRow[]>(initialPayrolls);
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -56,16 +57,9 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
   const [activePayroll, setActivePayroll] = useState<PayrollRow | null>(null);
 
   const [sending, setSending] = useState(false);
+  const [sendingWhatsAppId, setSendingWhatsAppId] = useState<string | null>(null);
   const [progressEvents, setProgressEvents] = useState<ProgressEvent[]>([]);
   const [progressOpen, setProgressOpen] = useState(false);
-
-  const [attendanceSlip, setAttendanceSlip] = useState<SlipPreview | null>(null);
-  const [attDaysWorked, setAttDaysWorked] = useState("");
-  const [attDaysLeave, setAttDaysLeave] = useState("");
-  const [attLossOfPay, setAttLossOfPay] = useState("");
-  const [attClBalance, setAttClBalance] = useState("");
-  const [attElBalance, setAttElBalance] = useState("");
-  const [savingAttendance, setSavingAttendance] = useState(false);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -134,43 +128,23 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
     }
   }
 
-  function openAttendanceEdit(slip: SlipPreview) {
-    setAttendanceSlip(slip);
-    setAttDaysWorked(slip.daysWorked !== null && slip.daysWorked !== undefined ? String(slip.daysWorked) : "");
-    setAttDaysLeave(slip.daysLeave !== null && slip.daysLeave !== undefined ? String(slip.daysLeave) : "");
-    setAttLossOfPay(slip.lossOfPayDays !== null && slip.lossOfPayDays !== undefined ? String(slip.lossOfPayDays) : "");
-    setAttClBalance(slip.clBalance !== null && slip.clBalance !== undefined ? String(slip.clBalance) : "");
-    setAttElBalance(slip.elBalance !== null && slip.elBalance !== undefined ? String(slip.elBalance) : "");
-  }
-
-  async function handleSaveAttendance() {
-    if (!attendanceSlip) return;
-    setSavingAttendance(true);
+  async function handleSendWhatsApp(slip: SlipPreview) {
+    if (!slip.phone) {
+      toast.error("This employee has no phone number on file — add one in Employees first.");
+      return;
+    }
+    setSendingWhatsAppId(slip.id);
     try {
-      const toNum = (v: string) => (v.trim() === "" ? null : Number(v));
-      const res = await fetch(`/api/payroll/slip/${attendanceSlip.id}/attendance`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          daysWorked: toNum(attDaysWorked),
-          daysLeave: toNum(attDaysLeave),
-          lossOfPayDays: toNum(attLossOfPay),
-          clBalance: toNum(attClBalance),
-          elBalance: toNum(attElBalance),
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        toast.error(json.error || "Failed to update attendance");
-        return;
-      }
-      setPreviewSlips((prev) =>
-        prev.map((s) => (s.id === attendanceSlip.id ? { ...s, ...json.slip } : s))
-      );
-      toast.success("Attendance details updated");
-      setAttendanceSlip(null);
+      const monthLabel = activePayroll ? `${MONTH_NAMES[activePayroll.month - 1]} ${activePayroll.year}` : "";
+      const filename = `SalarySlip_${slip.employeeCode}_${monthLabel.replace(" ", "_")}.pdf`;
+      await downloadFile(`/api/payroll/slip/${slip.id}/pdf`, filename);
+      const message = `Hi ${slip.employeeName}, please find attached your salary slip for ${monthLabel}. (The PDF was just downloaded to your device — please attach it here before sending)`;
+      window.open(buildWhatsAppShareLink(slip.phone, message), "_blank");
+      toast.success("PDF downloaded — attach it in the WhatsApp chat that just opened");
+    } catch {
+      toast.error("Failed to prepare WhatsApp message");
     } finally {
-      setSavingAttendance(false);
+      setSendingWhatsAppId(null);
     }
   }
 
@@ -234,7 +208,7 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
   const doneEvent = progressEvents.find((e) => e.type === "done") as { success: number; failed: number } | undefined;
 
   return (
-    <div className="animate-fadeUp space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Payroll</h1>
         <p className="text-sm text-[var(--text-secondary)]">Generate and dispatch monthly payslips</p>
@@ -253,20 +227,24 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
           <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Year</label>
           <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} className="w-24 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm" />
         </div>
-        <button
-          onClick={handleGenerate}
-          disabled={generating}
-          className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card hover:bg-brand-700 disabled:opacity-60"
-        >
-          {generating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-          Generate Payroll (All Employees)
-        </button>
-        <Link
-          href="/payroll/generate"
-          className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium hover:bg-white/10 transition-colors"
-        >
-          <Sparkles size={16} /> Generate Salary (Single Employee)
-        </Link>
+        {canManage && (
+          <>
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card hover:bg-brand-700 disabled:opacity-60"
+            >
+              {generating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+              Generate Payroll (All Employees)
+            </button>
+            <Link
+              href="/payroll/generate"
+              className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium hover:bg-white/10 transition-colors"
+            >
+              <Sparkles size={16} /> Generate Salary (Single Employee)
+            </Link>
+          </>
+        )}
       </div>
 
       <div className="glass-card overflow-x-auto rounded-2xl shadow-card">
@@ -300,7 +278,9 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1.5">
                     <button onClick={() => handlePreview(p)} title="Preview" className="rounded-lg p-2 hover:bg-white/10"><Eye size={15} /></button>
-                    <button onClick={() => handleSend(p)} title="Send Payslips" className="rounded-lg p-2 hover:bg-white/10"><Send size={15} /></button>
+                    {canManage && (
+                      <button onClick={() => handleSend(p)} title="Send Payslips" className="rounded-lg p-2 hover:bg-white/10"><Send size={15} /></button>
+                    )}
                     <button onClick={() => handleDownloadAll(p)} title="Download All" className="rounded-lg p-2 hover:bg-white/10"><Download size={15} /></button>
                   </div>
                 </td>
@@ -336,13 +316,6 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
                     <div className="flex items-center gap-4">
                       <span className="text-sm font-medium text-emerald-500">{formatCurrency(s.netSalary)}</span>
                       <button
-                        onClick={() => openAttendanceEdit(s)}
-                        className="rounded-lg p-2 hover:bg-white/10"
-                        title="Edit Attendance & Leave"
-                      >
-                        <CalendarClock size={14} />
-                      </button>
-                      <button
                         onClick={() =>
                           downloadFile(
                             `/api/payroll/slip/${s.id}/pdf`,
@@ -353,67 +326,28 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
                       >
                         <Download size={14} />
                       </button>
-                      <button
-                        onClick={() => handleDeleteSlip(s.id, s.employeeName)}
-                        className="rounded-lg p-2 text-rose-500 hover:bg-rose-500/10"
-                        title="Delete this salary slip"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {canManage && (
+                        <button
+                          onClick={() => handleSendWhatsApp(s)}
+                          disabled={sendingWhatsAppId === s.id}
+                          className="rounded-lg p-2 hover:bg-white/10 disabled:opacity-50"
+                          title="Send via WhatsApp"
+                        >
+                          {sendingWhatsAppId === s.id ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteSlip(s.id, s.employeeName)}
+                          className="rounded-lg p-2 text-rose-500 hover:bg-rose-500/10"
+                          title="Delete this salary slip"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Attendance Edit Modal */}
-      <AnimatePresence>
-        {attendanceSlip && (
-          <motion.div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="glass-card w-full max-w-md rounded-2xl p-6 shadow-glass">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-base font-semibold">Attendance & Leave — {attendanceSlip.employeeName}</h2>
-                <button onClick={() => setAttendanceSlip(null)}><X size={18} /></button>
-              </div>
-              <p className="mb-4 text-xs text-[var(--text-secondary)]">
-                No. of Working Days is calculated automatically{attendanceSlip.workingDays ? ` (${attendanceSlip.workingDays} days)` : ""}. Leave any field blank to show "-" on the payslip.
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Days Worked</label>
-                  <input type="number" step="0.5" value={attDaysWorked} onChange={(e) => setAttDaysWorked(e.target.value)} placeholder="-" className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-brand-500" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Days Leave</label>
-                  <input type="number" step="0.5" value={attDaysLeave} onChange={(e) => setAttDaysLeave(e.target.value)} placeholder="-" className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-brand-500" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Loss of Pay Days</label>
-                  <input type="number" step="0.5" value={attLossOfPay} onChange={(e) => setAttLossOfPay(e.target.value)} placeholder="-" className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-brand-500" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">CL Balance</label>
-                  <input type="number" step="0.5" value={attClBalance} onChange={(e) => setAttClBalance(e.target.value)} placeholder="-" className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-brand-500" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">EL Balance</label>
-                  <input type="number" step="0.5" value={attElBalance} onChange={(e) => setAttElBalance(e.target.value)} placeholder="-" className="h-10 w-full rounded-lg border border-white/10 bg-white/5 px-3 text-sm outline-none focus:border-brand-500" />
-                </div>
-              </div>
-              <div className="mt-5 flex justify-end gap-3">
-                <button onClick={() => setAttendanceSlip(null)} className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium hover:bg-white/5">
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveAttendance}
-                  disabled={savingAttendance}
-                  className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
-                >
-                  {savingAttendance ? "Saving..." : "Save"}
-                </button>
               </div>
             </motion.div>
           </motion.div>
