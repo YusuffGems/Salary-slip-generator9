@@ -39,7 +39,7 @@ export default function SetupPage() {
         setSubmitting(false);
         return;
       }
-      toast.success("Admin account created — you can now sign in");
+      toast.success("Admin account created - you can now sign in");
       router.push("/login");
     } catch {
       toast.error("Something went wrong");
@@ -64,10 +64,7 @@ export default function SetupPage() {
           <p className="mb-5 text-sm text-[var(--text-secondary)]">
             An admin account already exists for this app. Please sign in instead.
           </p>
-          
-            href="/login"
-            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700"
-          >
+          <a href="/login" className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700">
             Go to Sign In
           </a>
         </div>
@@ -81,7 +78,7 @@ export default function SetupPage() {
         <div className="mb-6 text-center">
           <h1 className="text-lg font-semibold text-white">Create Admin Account</h1>
           <p className="mt-1 text-xs text-[var(--text-secondary)]">
-            This is a one-time setup — this account will have full access to the app.
+            This is a one-time setup - this account will have full access to the app.
           </p>
         </div>
 
