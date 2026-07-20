@@ -148,7 +148,7 @@ export default function LoginPage() {
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
                   <>
-                    Sign In
+                    Sign 
                     <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
                   </>
                 )}
