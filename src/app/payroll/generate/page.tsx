@@ -14,9 +14,10 @@ export default async function GenerateSalaryPage() {
     employeeCode: e.employeeCode,
     name: e.name,
     email: e.email,
+    phone: e.phone ?? "",
     department: e.department ?? "",
     designation: e.designation ?? "",
-    dateOfJoining: e.dateOfJoining ? e.dateOfJoining.toISOString() : null,
+    dateOfJoining: e.dateOfJoining ? e.dateOfJoining.toISOString().slice(0, 10) : null,
     basicSalary: Number(e.basicSalary),
     hra: Number(e.hra),
     medicalAllowance: Number(e.medicalAllowance),
@@ -29,7 +30,9 @@ export default async function GenerateSalaryPage() {
     otherDeduction: Number(e.otherDeduction),
   }));
 
-  const departments = Array.from(new Set(serialized.map((e) => e.department).filter(Boolean))) as string[];
+  const departments = Array.from(
+    new Set(serialized.map((e) => e.department).filter(Boolean))
+  ) as string[];
 
   return <GenerateSalaryClient employees={serialized} departments={departments} />;
 }
