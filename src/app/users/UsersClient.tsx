@@ -103,9 +103,10 @@ export default function UsersClient({
       </div>
 
       <div className="glass-card overflow-x-auto rounded-2xl shadow-card">
-        <table className="w-full min-w-[560px] text-sm">
+        <table className="w-full min-w-[600px] text-sm">
           <thead>
             <tr className="border-b border-white/10 text-left text-[var(--text-secondary)]">
+              <th className="px-4 py-3">Sl No</th>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Role</th>
@@ -113,8 +114,9 @@ export default function UsersClient({
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {users.map((u, index) => (
               <tr key={u.id} className="border-b border-white/5 hover:bg-white/5">
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{index + 1}</td>
                 <td className="px-4 py-3 font-medium">
                   {u.name}
                   {u.id === currentUserId && <span className="ml-2 text-xs text-[var(--text-secondary)]">(you)</span>}

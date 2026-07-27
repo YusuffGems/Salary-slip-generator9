@@ -248,9 +248,10 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
       </div>
 
       <div className="glass-card overflow-x-auto rounded-2xl shadow-card">
-        <table className="w-full min-w-[720px] text-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr className="border-b border-white/10 text-left text-[var(--text-secondary)]">
+              <th className="px-4 py-3">Sl No</th>
               <th className="px-4 py-3">Month</th>
               <th className="px-4 py-3">Employees</th>
               <th className="px-4 py-3">Total Salary</th>
@@ -260,8 +261,9 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
             </tr>
           </thead>
           <tbody>
-            {payrolls.map((p) => (
+            {payrolls.map((p, index) => (
               <tr key={p.id} className="border-b border-white/5 hover:bg-white/5">
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{index + 1}</td>
                 <td className="px-4 py-3 font-medium">{MONTH_NAMES[p.month - 1]} {p.year}</td>
                 <td className="px-4 py-3">{p.employeeCount}</td>
                 <td className="px-4 py-3">{formatCurrency(p.totalGross)}</td>
@@ -287,7 +289,7 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
               </tr>
             ))}
             {payrolls.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-[var(--text-secondary)]">No payroll runs yet.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-[var(--text-secondary)]">No payroll runs yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -305,13 +307,16 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
                 <button onClick={() => setPreviewOpen(false)}><X size={20} /></button>
               </div>
               <div className="space-y-2">
-                {previewSlips.map((s) => (
+                {previewSlips.map((s, idx) => (
                   <div key={s.id} className="flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
-                    <div>
-                      <Link href={`/employees/${s.employeeId}`} className="text-sm font-medium hover:text-brand-400 hover:underline">
-                        {s.employeeName}
-                      </Link>
-                      <p className="text-xs text-[var(--text-secondary)]">{s.employeeCode} · {s.email}</p>
+                    <div className="flex items-center gap-3">
+                      <span className="w-5 text-xs text-[var(--text-secondary)]">{idx + 1}.</span>
+                      <div>
+                        <Link href={`/employees/${s.employeeId}`} className="text-sm font-medium hover:text-brand-400 hover:underline">
+                          {s.employeeName}
+                        </Link>
+                        <p className="text-xs text-[var(--text-secondary)]">{s.employeeCode} · {s.email}</p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-sm font-medium text-emerald-500">{formatCurrency(s.netSalary)}</span>

@@ -100,9 +100,10 @@ export default function EmployeesClient({
       </div>
 
       <div className="glass-card overflow-x-auto rounded-2xl shadow-card">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[680px] text-sm">
           <thead>
             <tr className="border-b border-white/10 text-left text-[var(--text-secondary)]">
+              <th className="px-4 py-3">Sl No</th>
               <th className="px-4 py-3">Employee</th>
               <th className="px-4 py-3">Department</th>
               <th className="px-4 py-3">Basic / Gross</th>
@@ -111,7 +112,7 @@ export default function EmployeesClient({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((e) => {
+            {filtered.map((e, index) => {
               const isContract = e.employeeType === "CONTRACT";
               const basicOrGross = isContract ? e.grossPay : e.basicSalary;
               const netAmount = isContract
@@ -120,6 +121,7 @@ export default function EmployeesClient({
 
               return (
                 <tr key={e.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">{index + 1}</td>
                   <td className="px-4 py-3">
                     <Link href={`/employees/${e.id}`} className="font-medium hover:text-brand-400 hover:underline">{e.name}</Link>
                     <div className="mt-0.5 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
@@ -159,7 +161,7 @@ export default function EmployeesClient({
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-[var(--text-secondary)]">
+                <td colSpan={6} className="px-4 py-10 text-center text-[var(--text-secondary)]">
                   No employees found.
                 </td>
               </tr>

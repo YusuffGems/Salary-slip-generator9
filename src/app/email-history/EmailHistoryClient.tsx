@@ -77,9 +77,10 @@ export default function EmailHistoryClient({ logs: initialLogs }: { logs: LogRow
       </div>
 
       <div className="glass-card overflow-x-auto rounded-2xl shadow-card">
-        <table className="w-full min-w-[680px] text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-white/10 text-left text-[var(--text-secondary)]">
+              <th className="px-4 py-3">Sl No</th>
               <th className="px-4 py-3">Employee</th>
               <th className="px-4 py-3">Payroll Month</th>
               <th className="px-4 py-3">Sent Time</th>
@@ -88,10 +89,11 @@ export default function EmailHistoryClient({ logs: initialLogs }: { logs: LogRow
             </tr>
           </thead>
           <tbody>
-            {logs.map((l) => {
+            {logs.map((l, index) => {
               const Icon = statusIcons[l.status] || Clock;
               return (
                 <tr key={l.id} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">{index + 1}</td>
                   <td className="px-4 py-3">
                     <div className="font-medium">{l.employeeName}</div>
                     <div className="text-xs text-[var(--text-secondary)]">
@@ -146,7 +148,7 @@ export default function EmailHistoryClient({ logs: initialLogs }: { logs: LogRow
               );
             })}
             {logs.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-[var(--text-secondary)]">No email history yet.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-[var(--text-secondary)]">No email history yet.</td></tr>
             )}
           </tbody>
         </table>
