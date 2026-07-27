@@ -13,11 +13,9 @@ export default async function EmployeesPage() {
     new Set(employees.map((e) => e.department).filter(Boolean))
   ) as string[];
 
-  // Decimal fields must be serialized before passing to a client component,
-  // and Prisma's `null` for empty optional text fields must become `undefined`
-  // to match the form's TypeScript types (which use `string | undefined`).
   const serialized = employees.map((e) => ({
     id: e.id,
+    employeeType: e.employeeType ?? "DIRECT",
     employeeCode: e.employeeCode,
     name: e.name,
     email: e.email,
@@ -40,6 +38,11 @@ export default async function EmployeesPage() {
     esi: Number(e.esi),
     professionalTax: Number(e.professionalTax),
     otherDeduction: Number(e.otherDeduction),
+
+    dateOfContract: e.dateOfContract ? e.dateOfContract.toISOString().slice(0, 10) : undefined,
+    grossPay: e.grossPay != null ? Number(e.grossPay) : 0,
+    lastMonthPay: e.lastMonthPay != null ? Number(e.lastMonthPay) : 0,
+    tds: e.tds != null ? Number(e.tds) : 0,
   }));
 
   return <EmployeesClient initialEmployees={serialized} departments={departments} />;

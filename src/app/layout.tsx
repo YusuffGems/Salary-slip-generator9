@@ -4,6 +4,7 @@ import Sidebar from "@/components/Sidebar";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
+import NextTopLoader from "nextjs-toploader";
 
 export const metadata: Metadata = {
   title: "Salary Slip Generator",
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="h-screen overflow-hidden antialiased">
+        <NextTopLoader color="#3d64f4" height={3} showSpinner={false} />
         <AuthSessionProvider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
             <div className="flex h-screen overflow-hidden">

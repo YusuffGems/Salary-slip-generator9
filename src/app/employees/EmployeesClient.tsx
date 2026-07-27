@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/salary";
-import { calculateSalary } from "@/lib/salary";
+import { calculateSalary, calculateContractSalary } from "@/lib/salary";
 import { useSession } from "next-auth/react";
 import type { EmployeeFormValues } from "./EmployeeForm";
 
@@ -25,6 +25,7 @@ export default function EmployeesClient({
   const [employees, setEmployees] = useState<EmployeeRow[]>(initialEmployees);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
   const filtered = useMemo(() => {
     return employees.filter((e) => {
@@ -34,9 +35,10 @@ export default function EmployeesClient({
         e.employeeCode.toLowerCase().includes(search.toLowerCase()) ||
         e.email.toLowerCase().includes(search.toLowerCase());
       const matchesDept = !deptFilter || e.department === deptFilter;
-      return matchesSearch && matchesDept;
+      const matchesType = !typeFilter || e.employeeType === typeFilter;
+      return matchesSearch && matchesDept && matchesType;
     });
-  }, [employees, search, deptFilter]);
+  }, [employees, search, deptFilter, typeFilter]);
 
   async function handleDelete(id: string) {
     if (!confirm("Remove this employee? Historical payslips will be preserved.")) return;
@@ -77,13 +79,22 @@ export default function EmployeesClient({
           />
         </div>
         <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none focus:border-brand-500"
+        >
+          <option value="" style={{ color: "#000" }}>All Types</option>
+          <option value="DIRECT" style={{ color: "#000" }}>Direct</option>
+          <option value="CONTRACT" style={{ color: "#000" }}>Contract</option>
+        </select>
+        <select
           value={deptFilter}
           onChange={(e) => setDeptFilter(e.target.value)}
           className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none focus:border-brand-500"
         >
-          <option value="">All Departments</option>
+          <option value="" style={{ color: "#000" }}>All Departments</option>
           {departments.map((d) => (
-            <option key={d} value={d}>{d}</option>
+            <option key={d} value={d} style={{ color: "#000" }}>{d}</option>
           ))}
         </select>
       </div>
@@ -94,25 +105,39 @@ export default function EmployeesClient({
             <tr className="border-b border-white/10 text-left text-[var(--text-secondary)]">
               <th className="px-4 py-3">Employee</th>
               <th className="px-4 py-3">Department</th>
-              <th className="px-4 py-3">Basic</th>
-              <th className="px-4 py-3">Net Salary</th>
+              <th className="px-4 py-3">Basic / Gross</th>
+              <th className="px-4 py-3">Net Salary / Pay</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((e) => {
-              const breakdown = calculateSalary(e);
+              const isContract = e.employeeType === "CONTRACT";
+              const basicOrGross = isContract ? e.grossPay : e.basicSalary;
+              const netAmount = isContract
+                ? calculateContractSalary(e).netPay
+                : calculateSalary(e).netSalary;
+
               return (
                 <tr key={e.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
                     <Link href={`/employees/${e.id}`} className="font-medium hover:text-brand-400 hover:underline">{e.name}</Link>
-                    <div className="text-xs text-[var(--text-secondary)]">
-                      <span className="font-mono text-brand-400">{e.employeeCode}</span> · {e.email}
+                    <div className="mt-0.5 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+                      <span className="font-mono text-brand-400">{e.employeeCode}</span>
+                      <span>·</span>
+                      <span>{e.email}</span>
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                          isContract ? "bg-amber-500/15 text-amber-500" : "bg-brand-500/15 text-brand-400"
+                        }`}
+                      >
+                        {isContract ? "Contract" : "Direct"}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-3">{e.department || "-"}</td>
-                  <td className="px-4 py-3">{formatCurrency(e.basicSalary)}</td>
-                  <td className="px-4 py-3 font-medium text-emerald-500">{formatCurrency(breakdown.netSalary)}</td>
+                  <td className="px-4 py-3">{formatCurrency(basicOrGross)}</td>
+                  <td className="px-4 py-3 font-medium text-emerald-500">{formatCurrency(netAmount)}</td>
                   <td className="px-4 py-3">
                     {isAdmin && (
                       <div className="flex justify-end gap-2">

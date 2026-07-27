@@ -1,5 +1,4 @@
 import type { SalaryBreakdown } from "@/types";
-
 /**
  * Pure calculation function — used both live in the Employee form (client)
  * and server-side when generating payroll, so the numbers are always
@@ -23,19 +22,15 @@ export function calculateSalary(input: {
   const travelAllowance = round2(input.travelAllowance || 0);
   const specialAllowance = round2(input.specialAllowance || 0);
   const bonus = round2(input.bonus || 0);
-
   const grossSalary = round2(
     basicSalary + hra + medicalAllowance + travelAllowance + specialAllowance + bonus
   );
-
   const pf = round2(input.pf || 0);
   const esi = round2(input.esi || 0);
   const professionalTax = round2(input.professionalTax || 0);
   const otherDeduction = round2(input.otherDeduction || 0);
-
   const totalDeduction = round2(pf + esi + professionalTax + otherDeduction);
   const netSalary = round2(grossSalary - totalDeduction);
-
   return {
     basicSalary,
     hra,
@@ -55,6 +50,30 @@ export function calculateSalary(input: {
 
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+export interface ContractSalaryBreakdown {
+  grossPay: number;
+  lastMonthPay: number;
+  tds: number;
+  netPay: number;
+}
+
+/**
+ * Contract employees have a much simpler pay structure than Direct employees -
+ * just a flat Gross Pay, minus Last Month Pay (advance/adjustment) and TDS,
+ * with no HRA/PF/ESI breakdown at all.
+ */
+export function calculateContractSalary(input: {
+  grossPay: number;
+  lastMonthPay: number;
+  tds: number;
+}): ContractSalaryBreakdown {
+  const grossPay = round2(input.grossPay || 0);
+  const lastMonthPay = round2(input.lastMonthPay || 0);
+  const tds = round2(input.tds || 0);
+  const netPay = round2(grossPay - lastMonthPay - tds);
+  return { grossPay, lastMonthPay, tds, netPay };
 }
 
 export function formatCurrency(amount: number, currency = "INR"): string {

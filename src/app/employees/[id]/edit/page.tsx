@@ -14,6 +14,7 @@ export default async function EditEmployeePage({
   if (!employee) notFound();
 
   const initialValues = {
+    employeeType: employee.employeeType ?? "DIRECT",
     employeeCode: employee.employeeCode,
     name: employee.name,
     email: employee.email,
@@ -36,6 +37,11 @@ export default async function EditEmployeePage({
     esi: Number(employee.esi),
     professionalTax: Number(employee.professionalTax),
     otherDeduction: Number(employee.otherDeduction),
+
+    dateOfContract: employee.dateOfContract ? employee.dateOfContract.toISOString().slice(0, 10) : "",
+    grossPay: employee.grossPay != null ? Number(employee.grossPay) : 0,
+    lastMonthPay: employee.lastMonthPay != null ? Number(employee.lastMonthPay) : 0,
+    tds: employee.tds != null ? Number(employee.tds) : 0,
   };
 
   return <EmployeeFormScreen mode="edit" employeeId={employee.id} initialValues={initialValues} />;

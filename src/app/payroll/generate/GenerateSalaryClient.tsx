@@ -183,7 +183,7 @@ export default function GenerateSalaryClient({
             className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
           >
             {MONTH_NAMES.map((m, i) => (
-              <option key={m} value={i + 1}>{m}</option>
+              <option key={m} value={i + 1} style={{ color: "#000" }}>{m}</option>
             ))}
           </select>
         </div>
@@ -215,9 +215,9 @@ export default function GenerateSalaryClient({
             onChange={(e) => setDeptFilter(e.target.value)}
             className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm"
           >
-            <option value="">All Departments</option>
+            <option value="" style={{ color: "#000" }}>All Departments</option>
             {departments.map((d) => (
-              <option key={d} value={d}>{d}</option>
+              <option key={d} value={d} style={{ color: "#000" }}>{d}</option>
             ))}
           </select>
         </div>

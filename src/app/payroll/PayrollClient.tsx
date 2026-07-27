@@ -219,7 +219,7 @@ export default function PayrollClient({ initialPayrolls }: { initialPayrolls: Pa
           <label className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">Month</label>
           <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm">
             {MONTH_NAMES.map((m, i) => (
-              <option key={m} value={i + 1}>{m}</option>
+              <option key={m} value={i + 1} style={{ color: "#000" }}>{m}</option>
             ))}
           </select>
         </div>

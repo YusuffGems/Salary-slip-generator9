@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { calculateSalary, getWorkingDaysInMonth } from "@/lib/salary";
+import { calculateSalary, calculateContractSalary, getWorkingDaysInMonth } from "@/lib/salary";
 import { z } from "zod";
 
 const attendanceSchema = z.object({
@@ -68,23 +68,51 @@ export async function POST(req: NextRequest) {
       }
 
       for (const emp of employeesToProcess) {
-        const b = calculateSalary({
-          basicSalary: Number(emp.basicSalary),
-          hra: Number(emp.hra),
-          medicalAllowance: Number(emp.medicalAllowance),
-          travelAllowance: Number(emp.travelAllowance),
-          specialAllowance: Number(emp.specialAllowance),
-          bonus: Number(emp.bonus),
-          pf: Number(emp.pf),
-          esi: Number(emp.esi),
-          professionalTax: Number(emp.professionalTax),
-          otherDeduction: Number(emp.otherDeduction),
-        });
+        const isContract = emp.employeeType === "CONTRACT";
 
-        const slip = await tx.salarySlip.create({
-          data: {
-            payrollId: payroll!.id,
-            employeeId: emp.id,
+        let slipData: any;
+
+        if (isContract) {
+          const cb = calculateContractSalary({
+            grossPay: Number(emp.grossPay ?? 0),
+            lastMonthPay: Number(emp.lastMonthPay ?? 0),
+            tds: Number(emp.tds ?? 0),
+          });
+
+          slipData = {
+            employeeType: "CONTRACT",
+            basicSalary: 0,
+            hra: 0,
+            medicalAllowance: 0,
+            travelAllowance: 0,
+            specialAllowance: 0,
+            bonus: 0,
+            grossSalary: cb.grossPay,
+            pf: 0,
+            esi: 0,
+            professionalTax: 0,
+            otherDeduction: 0,
+            totalDeduction: cb.lastMonthPay + cb.tds,
+            netSalary: cb.netPay,
+            lastMonthPay: cb.lastMonthPay,
+            tds: cb.tds,
+          };
+        } else {
+          const b = calculateSalary({
+            basicSalary: Number(emp.basicSalary),
+            hra: Number(emp.hra),
+            medicalAllowance: Number(emp.medicalAllowance),
+            travelAllowance: Number(emp.travelAllowance),
+            specialAllowance: Number(emp.specialAllowance),
+            bonus: Number(emp.bonus),
+            pf: Number(emp.pf),
+            esi: Number(emp.esi),
+            professionalTax: Number(emp.professionalTax),
+            otherDeduction: Number(emp.otherDeduction),
+          });
+
+          slipData = {
+            employeeType: "DIRECT",
             basicSalary: b.basicSalary,
             hra: b.hra,
             medicalAllowance: b.medicalAllowance,
@@ -98,6 +126,14 @@ export async function POST(req: NextRequest) {
             otherDeduction: b.otherDeduction,
             totalDeduction: b.totalDeduction,
             netSalary: b.netSalary,
+          };
+        }
+
+        const slip = await tx.salarySlip.create({
+          data: {
+            payrollId: payroll!.id,
+            employeeId: emp.id,
+            ...slipData,
             workingDays,
             daysWorked: attendance?.daysWorked,
             daysLeave: attendance?.daysLeave,

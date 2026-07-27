@@ -8,9 +8,15 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum EmployeeType {
+  DIRECT
+  CONTRACT
+}
+
 model Employee {
   id               String   @id @default(cuid())
-  employeeCode     String   @unique // Employee ID shown in UI
+  employeeCode     String   // Employee ID shown in UI - uniqueness enforced at app level (only among active employees), not the database, so deleted employees free up their old ID
+  employeeType     EmployeeType @default(DIRECT)
   name             String
   email            String
   phone            String?
@@ -36,6 +42,12 @@ model Employee {
   otherDeduction   Decimal  @default(0) @db.Decimal(12, 2)
 
   isActive         Boolean  @default(true)
+
+  // Contract employee fields only - Direct employees leave these blank
+  dateOfContract   DateTime?
+  grossPay         Decimal? @db.Decimal(12, 2)
+  lastMonthPay     Decimal? @default(0) @db.Decimal(12, 2)
+  tds              Decimal? @default(0) @db.Decimal(12, 2)
 
   salarySlips      SalarySlip[]
   emailLogs        EmailLog[]
@@ -75,6 +87,7 @@ enum PayrollStatus {
 
 model SalarySlip {
   id               String   @id @default(cuid())
+  employeeType     EmployeeType @default(DIRECT)
   payrollId        String
   payroll          Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
   employeeId       String
@@ -96,6 +109,10 @@ model SalarySlip {
 
   netSalary        Decimal  @db.Decimal(12, 2)
   pdfUrl           String?
+
+  // Contract employee fields - only populated for CONTRACT-type slips
+  lastMonthPay     Decimal? @db.Decimal(12, 2)
+  tds              Decimal? @db.Decimal(12, 2)
 
   // Attendance & leave — workingDays is auto-calculated, the rest are
   // manually entered per slip when generating a single employee's payslip.

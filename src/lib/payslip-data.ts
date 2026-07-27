@@ -10,6 +10,8 @@ export async function buildPayslipData(slipId: string): Promise<PayslipData | nu
 
   const settings = await prisma.companySettings.findUnique({ where: { id: "singleton" } });
 
+  const isContract = slip.employeeType === "CONTRACT";
+
   return {
     employeeName: slip.employee.name,
     employeeCode: slip.employee.employeeCode,
@@ -40,6 +42,20 @@ export async function buildPayslipData(slipId: string): Promise<PayslipData | nu
       totalDeduction: Number(slip.totalDeduction),
       netSalary: Number(slip.netSalary),
     },
+
+    employeeType: isContract ? "CONTRACT" : "DIRECT",
+    dateOfContract: slip.employee.dateOfContract
+      ? slip.employee.dateOfContract.toLocaleDateString("en-GB").replace(/\//g, "-")
+      : undefined,
+    contractBreakdown: isContract
+      ? {
+          grossPay: Number(slip.grossSalary),
+          lastMonthPay: Number(slip.lastMonthPay ?? 0),
+          tds: Number(slip.tds ?? 0),
+          netPay: Number(slip.netSalary),
+        }
+      : undefined,
+
     company: {
       companyName: settings?.companyName || "Your Company",
       logoUrl: settings?.logoUrl ?? undefined,

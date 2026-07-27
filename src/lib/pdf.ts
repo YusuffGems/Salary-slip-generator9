@@ -1,5 +1,5 @@
 import PDFDocument from "pdfkit";
-import { formatCurrency, MONTH_NAMES } from "./salary";
+import { MONTH_NAMES } from "./salary";
 import type { SalaryBreakdown } from "@/types";
 
 export interface PayslipData {
@@ -16,6 +16,17 @@ export interface PayslipData {
   ifscCode?: string;
   panNumber?: string;
   breakdown: SalaryBreakdown;
+
+  // Contract employee - present only when employeeType is CONTRACT
+  employeeType?: "DIRECT" | "CONTRACT";
+  dateOfContract?: string;
+  contractBreakdown?: {
+    grossPay: number;
+    lastMonthPay: number;
+    tds: number;
+    netPay: number;
+  };
+
   company: {
     companyName: string;
     logoUrl?: string;
@@ -37,6 +48,13 @@ export interface PayslipData {
 const BORDER = "#000000";
 const TEXT = "#000000";
 
+function formatAmountForPdf(n: number): string {
+  return "Rs. " + new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
 async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   try {
     const res = await fetch(url);
@@ -51,6 +69,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
 export async function generatePayslipPdf(data: PayslipData): Promise<Buffer> {
   const { breakdown: b, company } = data;
   const monthLabel = `${MONTH_NAMES[data.month - 1]} ${data.year}`;
+  const isContract = data.employeeType === "CONTRACT";
 
   const doc = new PDFDocument({ size: "A4", margin: 40 });
   const chunks: Buffer[] = [];
@@ -88,15 +107,25 @@ export async function generatePayslipPdf(data: PayslipData): Promise<Buffer> {
   const col1W = pageWidth * 0.28;
   const col2W = pageWidth - col1W;
 
-  const infoRows: [string, string][] = [
-    ["Employee Name", data.employeeName],
-    ["Employee Code", data.employeeCode],
-    ["Designation", data.designation || "-"],
-    ["Department", data.department || "-"],
-    ["PAN No.", data.panNumber || "-"],
-    ["Joining Date", data.dateOfJoining || "-"],
-    ["Email", data.employeeEmail || "-"],
-  ];
+  const infoRows: [string, string][] = isContract
+    ? [
+        ["Employee Name", data.employeeName],
+        ["Employee Code", data.employeeCode],
+        ["Designation", data.designation || "-"],
+        ["Department", data.department || "-"],
+        ["PAN No.", data.panNumber || "-"],
+        ["Date of Contract", data.dateOfContract || "-"],
+        ["Email", data.employeeEmail || "-"],
+      ]
+    : [
+        ["Employee Name", data.employeeName],
+        ["Employee Code", data.employeeCode],
+        ["Designation", data.designation || "-"],
+        ["Department", data.department || "-"],
+        ["PAN No.", data.panNumber || "-"],
+        ["Joining Date", data.dateOfJoining || "-"],
+        ["Email", data.employeeEmail || "-"],
+      ];
 
   function drawGridRow(cells: string[], widths: number[], rowY: number) {
     let x = left;
@@ -122,98 +151,126 @@ export async function generatePayslipPdf(data: PayslipData): Promise<Buffer> {
 
   y += 14;
 
-  const sCol1 = pageWidth * 0.22;
-  const sCol2 = pageWidth * 0.22;
-  const sCol3 = pageWidth * 0.28;
-  const sCol4 = pageWidth - sCol1 - sCol2 - sCol3;
+  if (isContract && data.contractBreakdown) {
+    const cb = data.contractBreakdown;
+    const cCol1 = pageWidth * 0.55;
+    const cCol2 = pageWidth - cCol1;
 
-  const headerRowHeight = 26;
-  doc.lineWidth(0.75).strokeColor(BORDER);
-  doc.rect(left, y, sCol1 + sCol2, headerRowHeight).stroke();
-  doc.rect(left + sCol1 + sCol2, y, sCol3 + sCol4, headerRowHeight).stroke();
-  doc
-    .fontSize(8.5)
-    .font("Helvetica-Bold")
-    .fillColor(TEXT)
-    .text("Salary Calculation\nIn Rupees", left + 6, y + 5, { width: sCol1 + sCol2 - 12, align: "center" });
-  doc
-    .fontSize(8.5)
-    .font("Helvetica-Bold")
-    .text("Deductions in Rupees", left + sCol1 + sCol2 + 6, y + 9, { width: sCol3 + sCol4 - 12, align: "center" });
-  y += headerRowHeight;
+    const contractRows: [string, string][] = [
+      ["Gross Pay", formatAmountForPdf(cb.grossPay)],
+      ["Last Month Pay", formatAmountForPdf(cb.lastMonthPay)],
+      ["TDS", formatAmountForPdf(cb.tds)],
+    ];
 
-  const earnings: [string, number][] = [
-    ["Basic", b.basicSalary],
-    ["HRA", b.hra],
-    ["Transport Allowance", b.travelAllowance],
-    ["Medical Allowance", b.medicalAllowance],
-    ["Other Allowance", b.specialAllowance],
-    ["Bonus", b.bonus],
-  ];
-  const deductions: [string, number][] = [
-    ["Professional Tax", b.professionalTax],
-    ["Provident Fund", b.pf],
-    ["ESI", b.esi],
-    ["Other Deduction", b.otherDeduction],
-  ];
+    contractRows.forEach((row) => {
+      drawGridRow([row[0], row[1]], [cCol1, cCol2], y);
+      y += rowHeight;
+    });
 
-  const dataRowHeight = 19;
-  for (let i = 0; i < earnings.length; i++) {
-    const isSecondLast = i === earnings.length - 2;
-    const rowY = y + i * dataRowHeight;
-
+    const netRowHeight = 24;
     doc.lineWidth(0.75).strokeColor(BORDER);
-    doc.rect(left, rowY, sCol1, dataRowHeight).stroke();
-    doc.rect(left + sCol1, rowY, sCol2, dataRowHeight).stroke();
+    doc.rect(left, y, cCol1, netRowHeight).stroke();
+    doc.rect(left + cCol1, y, cCol2, netRowHeight).stroke();
+    doc.fontSize(10).font("Helvetica-Bold").fillColor(TEXT).text("NET PAYABLE", left + 6, y + 7, { width: cCol1 - 10 });
+    doc.fontSize(10).font("Helvetica-Bold").text(formatAmountForPdf(cb.netPay), left + cCol1 + 6, y + 7, {
+      width: cCol2 - 12,
+      align: "right",
+    });
+    y += netRowHeight + 30;
+  } else {
+    const sCol1 = pageWidth * 0.22;
+    const sCol2 = pageWidth * 0.22;
+    const sCol3 = pageWidth * 0.28;
+    const sCol4 = pageWidth - sCol1 - sCol2 - sCol3;
 
-    doc.fontSize(8.5).font("Helvetica").fillColor(TEXT).text(earnings[i][0], left + 6, rowY + 5, { width: sCol1 - 10 });
-    doc.fontSize(8.5).font("Helvetica").text(formatCurrency(earnings[i][1]), left + sCol1 + 6, rowY + 5, {
+    const headerRowHeight = 26;
+    doc.lineWidth(0.75).strokeColor(BORDER);
+    doc.rect(left, y, sCol1 + sCol2, headerRowHeight).stroke();
+    doc.rect(left + sCol1 + sCol2, y, sCol3 + sCol4, headerRowHeight).stroke();
+    doc
+      .fontSize(8.5)
+      .font("Helvetica-Bold")
+      .fillColor(TEXT)
+      .text("Salary Calculation\nIn Rupees", left + 6, y + 5, { width: sCol1 + sCol2 - 12, align: "center" });
+    doc
+      .fontSize(8.5)
+      .font("Helvetica-Bold")
+      .text("Deductions in Rupees", left + sCol1 + sCol2 + 6, y + 9, { width: sCol3 + sCol4 - 12, align: "center" });
+    y += headerRowHeight;
+
+    const earnings: [string, number][] = [
+      ["Basic", b.basicSalary],
+      ["HRA", b.hra],
+      ["Transport Allowance", b.travelAllowance],
+      ["Medical Allowance", b.medicalAllowance],
+      ["Other Allowance", b.specialAllowance],
+      ["Mobile Allowance", b.bonus],
+    ];
+    const deductions: [string, number][] = [
+      ["Professional Tax", b.professionalTax],
+      ["Provident Fund", b.pf],
+      ["ESI", b.esi],
+      ["Other Deduction", b.otherDeduction],
+    ];
+
+    const dataRowHeight = 19;
+    for (let i = 0; i < earnings.length; i++) {
+      const isSecondLast = i === earnings.length - 2;
+      const rowY = y + i * dataRowHeight;
+
+      doc.lineWidth(0.75).strokeColor(BORDER);
+      doc.rect(left, rowY, sCol1, dataRowHeight).stroke();
+      doc.rect(left + sCol1, rowY, sCol2, dataRowHeight).stroke();
+
+      doc.fontSize(8.5).font("Helvetica").fillColor(TEXT).text(earnings[i][0], left + 6, rowY + 5, { width: sCol1 - 10 });
+      doc.fontSize(8.5).font("Helvetica").text(formatAmountForPdf(earnings[i][1]), left + sCol1 + 6, rowY + 5, {
+        width: sCol2 - 12,
+        align: "right",
+      });
+
+      if (i < deductions.length) {
+        doc.rect(left + sCol1 + sCol2, rowY, sCol3, dataRowHeight).stroke();
+        doc.rect(left + sCol1 + sCol2 + sCol3, rowY, sCol4, dataRowHeight).stroke();
+        doc.fontSize(8.5).font("Helvetica").text(deductions[i][0], left + sCol1 + sCol2 + 6, rowY + 5, { width: sCol3 - 10 });
+        doc.fontSize(8.5).font("Helvetica").text(formatAmountForPdf(deductions[i][1]), left + sCol1 + sCol2 + sCol3 + 6, rowY + 5, {
+          width: sCol4 - 12,
+          align: "right",
+        });
+      } else if (isSecondLast) {
+        doc.rect(left + sCol1 + sCol2, rowY, sCol3, dataRowHeight).stroke();
+        doc.rect(left + sCol1 + sCol2 + sCol3, rowY, sCol4, dataRowHeight).stroke();
+        doc.fontSize(8.5).font("Helvetica-Bold").text("Total Deductions", left + sCol1 + sCol2 + 6, rowY + 5, { width: sCol3 - 10 });
+        doc.fontSize(8.5).font("Helvetica-Bold").text(formatAmountForPdf(b.totalDeduction), left + sCol1 + sCol2 + sCol3 + 6, rowY + 5, {
+          width: sCol4 - 12,
+          align: "right",
+        });
+      } else {
+        doc.rect(left + sCol1 + sCol2, rowY, sCol3, dataRowHeight).stroke();
+        doc.rect(left + sCol1 + sCol2 + sCol3, rowY, sCol4, dataRowHeight).stroke();
+      }
+    }
+    y += earnings.length * dataRowHeight;
+
+    const totalRowHeight = 22;
+    doc.lineWidth(0.75).strokeColor(BORDER);
+    doc.rect(left, y, sCol1, totalRowHeight).stroke();
+    doc.rect(left + sCol1, y, sCol2, totalRowHeight).stroke();
+    doc.rect(left + sCol1 + sCol2, y, sCol3, totalRowHeight).stroke();
+    doc.rect(left + sCol1 + sCol2 + sCol3, y, sCol4, totalRowHeight).stroke();
+
+    doc.fontSize(9).font("Helvetica-Bold").fillColor(TEXT).text("TOTAL", left + 6, y + 6, { width: sCol1 - 10 });
+    doc.fontSize(9).font("Helvetica-Bold").text(formatAmountForPdf(b.grossSalary), left + sCol1 + 6, y + 6, {
       width: sCol2 - 12,
       align: "right",
     });
+    doc.fontSize(9).font("Helvetica-Bold").text("NET PAYABLE", left + sCol1 + sCol2 + 6, y + 6, { width: sCol3 - 10 });
+    doc.fontSize(9).font("Helvetica-Bold").text(formatAmountForPdf(b.netSalary), left + sCol1 + sCol2 + sCol3 + 6, y + 6, {
+      width: sCol4 - 12,
+      align: "right",
+    });
 
-    if (i < deductions.length) {
-      doc.rect(left + sCol1 + sCol2, rowY, sCol3, dataRowHeight).stroke();
-      doc.rect(left + sCol1 + sCol2 + sCol3, rowY, sCol4, dataRowHeight).stroke();
-      doc.fontSize(8.5).font("Helvetica").text(deductions[i][0], left + sCol1 + sCol2 + 6, rowY + 5, { width: sCol3 - 10 });
-      doc.fontSize(8.5).font("Helvetica").text(formatCurrency(deductions[i][1]), left + sCol1 + sCol2 + sCol3 + 6, rowY + 5, {
-        width: sCol4 - 12,
-        align: "right",
-      });
-    } else if (isSecondLast) {
-      doc.rect(left + sCol1 + sCol2, rowY, sCol3, dataRowHeight).stroke();
-      doc.rect(left + sCol1 + sCol2 + sCol3, rowY, sCol4, dataRowHeight).stroke();
-      doc.fontSize(8.5).font("Helvetica-Bold").text("Total Deductions", left + sCol1 + sCol2 + 6, rowY + 5, { width: sCol3 - 10 });
-      doc.fontSize(8.5).font("Helvetica-Bold").text(formatCurrency(b.totalDeduction), left + sCol1 + sCol2 + sCol3 + 6, rowY + 5, {
-        width: sCol4 - 12,
-        align: "right",
-      });
-    } else {
-      doc.rect(left + sCol1 + sCol2, rowY, sCol3, dataRowHeight).stroke();
-      doc.rect(left + sCol1 + sCol2 + sCol3, rowY, sCol4, dataRowHeight).stroke();
-    }
+    y += totalRowHeight + 30;
   }
-  y += earnings.length * dataRowHeight;
-
-  const totalRowHeight = 22;
-  doc.lineWidth(0.75).strokeColor(BORDER);
-  doc.rect(left, y, sCol1, totalRowHeight).stroke();
-  doc.rect(left + sCol1, y, sCol2, totalRowHeight).stroke();
-  doc.rect(left + sCol1 + sCol2, y, sCol3, totalRowHeight).stroke();
-  doc.rect(left + sCol1 + sCol2 + sCol3, y, sCol4, totalRowHeight).stroke();
-
-  doc.fontSize(9).font("Helvetica-Bold").fillColor(TEXT).text("TOTAL", left + 6, y + 6, { width: sCol1 - 10 });
-  doc.fontSize(9).font("Helvetica-Bold").text(formatCurrency(b.grossSalary), left + sCol1 + 6, y + 6, {
-    width: sCol2 - 12,
-    align: "right",
-  });
-  doc.fontSize(9).font("Helvetica-Bold").text("NET PAYABLE", left + sCol1 + sCol2 + 6, y + 6, { width: sCol3 - 10 });
-  doc.fontSize(9).font("Helvetica-Bold").text(formatCurrency(b.netSalary), left + sCol1 + sCol2 + sCol3 + 6, y + 6, {
-    width: sCol4 - 12,
-    align: "right",
-  });
-
-  y += totalRowHeight + 30;
 
   const sigBoxHeight = 100;
   const sigColWidth = pageWidth / 2;
